@@ -15,8 +15,6 @@ pip install -r requirements.txt
 ```env
 OPENAI_API_KEY=your_openai_api_key_here
 DEFAULT_LLM_MODEL=gpt-4-turbo-preview
-VISION_MODEL=gpt-4-vision-preview
-EMBEDDING_MODEL=text-embedding-3-large
 ```
 
 ### 3. Запуск сервера
@@ -47,21 +45,9 @@ curl -X POST "http://localhost:8000/query" \
   -d '{"query": "What is artificial intelligence?"}'
 ```
 
-#### Мультимодальный запрос (с изображением)
+#### Подсказка
 
-```bash
-curl -X POST "http://localhost:8000/query-multimodal" \
-  -F "query=What is in this image?" \
-  -F "image=@path/to/image.jpg"
-```
-
-#### Добавление документов в RAG
-
-```bash
-curl -X POST "http://localhost:8000/rag/add-documents" \
-  -H "Content-Type: application/json" \
-  -d '{"documents": ["Document 1 text...", "Document 2 text..."]}'
-```
+В упрощённой версии проекта доступны только текстовые запросы через `/query`.
 
 ### 6. Использование Python скрипта
 
@@ -75,8 +61,6 @@ python example_usage.py
 2. **Router Agent** анализирует запрос и определяет подходящего агента
 3. Один из специализированных агентов обрабатывает запрос:
    - **Text Reasoning Agent** - для сложных рассуждений
-   - **Vision Agent** - для анализа изображений
-   - **Retrieval Agent** - для поиска в базе знаний (RAG)
    - **Tool Agent** - для выполнения внешних инструментов
 4. **Critic Agent** проверяет качество ответа
 5. **Aggregation** объединяет результаты
@@ -84,16 +68,6 @@ python example_usage.py
 
 ## Настройка компонентов
 
-### Векторная база данных
-
-По умолчанию используется FAISS (локально). Для использования Qdrant:
-
-1. Установите и запустите Qdrant
-2. Обновите `.env`:
-```env
-QDRANT_HOST=localhost
-QDRANT_PORT=6333
-```
 
 ### Инструменты
 
@@ -116,9 +90,7 @@ pip install -r requirements.txt
 
 Проверьте, что файл `.env` создан и содержит правильный `OPENAI_API_KEY`
 
-### Ошибка векторной базы
 
-Если векторная база не инициализирована, система будет работать, но RAG функциональность будет ограничена. Добавьте документы через API.
 
 ## Следующие шаги
 

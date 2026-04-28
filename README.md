@@ -1,6 +1,6 @@
 # Multi-Agent System with LangGraph
 
-Архитектура системы мультиагентов на базе LangGraph с поддержкой мультимодальных запросов и RAG.
+Упрощённая архитектура системы мультиагентов на базе LangGraph (текстовые запросы + инструменты).
 
 ## Архитектура
 
@@ -13,8 +13,6 @@ LangGraph Orchestrator
  ├── Router Agent
  │
  ├── Text Reasoning Agent
- ├── Vision Agent
- ├── Retrieval Agent (RAG)
  ├── Tool Agent
  │
  └── Critic / Verifier Agent
@@ -28,8 +26,7 @@ User
 
 ### 1. API Gateway (FastAPI)
 - RESTful API для взаимодействия с системой
-- Поддержка текстовых и мультимодальных запросов
-- Управление документами для RAG
+- Поддержка текстовых запросов
 
 ### 2. LangGraph Orchestrator
 - Управление потоком выполнения между агентами
@@ -40,22 +37,10 @@ User
 
 #### Router Agent
 - Анализирует запрос и определяет подходящего агента
-- Учитывает наличие изображений
 
 #### Text Reasoning Agent
 - Сложные рассуждения и анализ
 - Пошаговое решение проблем
-
-#### Vision Agent
-- Анализ изображений
-- OCR и captioning
-- Мультимодальное понимание
-
-#### Retrieval Agent (RAG)
-- Поиск в векторной базе данных
-- Переписывание запросов
-- Сжатие контекста
-- Переранжирование результатов
 
 #### Tool Agent
 - Выполнение внешних инструментов
@@ -68,32 +53,7 @@ User
 - Оценка релевантности и точности
 - Агрегация множественных ответов
 
-### 4. Multimodal Pipeline
-
-#### Image Processing
-- Image encoder (CLIP/SigLIP)
-- Captioning (GPT-4V)
-- OCR
-
-#### Fusion Strategies
-- Early fusion (embeddings)
-- Late fusion (textual grounding)
-- Cross-attention (advanced)
-
-### 5. RAG Layer
-
-#### Vector Store
-- FAISS (локально)
-- Qdrant (опционально)
-- Neo4j (опционально)
-
-#### Retrieval Strategies
-- Query rewriting
-- Multimodal retrieval
-- Context compression
-- Re-ranking
-
-### 6. Tools
+### 4. Tools
 
 #### Web Search
 - Интеграция с поисковыми API (Tavily, SerpAPI)
@@ -147,20 +107,10 @@ curl -X POST "http://localhost:8000/query" \
 ```
 
 ### Мультимодальный запрос
-
-```bash
-curl -X POST "http://localhost:8000/query-multimodal" \
-  -F "query=What is in this image?" \
-  -F "image=@path/to/image.jpg"
-```
+В упрощённой версии не поддерживается.
 
 ### Добавление документов в RAG
-
-```bash
-curl -X POST "http://localhost:8000/rag/add-documents" \
-  -H "Content-Type: application/json" \
-  -d '{"documents": ["Document 1 text...", "Document 2 text..."]}'
-```
+В упрощённой версии не поддерживается.
 
 ## Структура проекта
 
@@ -177,17 +127,8 @@ curl -X POST "http://localhost:8000/rag/add-documents" \
 │   ├── __init__.py
 │   ├── router_agent.py
 │   ├── text_reasoning_agent.py
-│   ├── vision_agent.py
-│   ├── retrieval_agent.py
 │   ├── tool_agent.py
 │   └── critic_agent.py
-├── multimodal/            # Мультимодальная обработка
-│   ├── __init__.py
-│   └── image_encoder.py
-├── rag/                   # RAG компоненты
-│   ├── __init__.py
-│   ├── vector_store.py
-│   └── query_processor.py
 ├── tools/                 # Внешние инструменты
 │   ├── __init__.py
 │   ├── web_search.py
@@ -202,8 +143,6 @@ curl -X POST "http://localhost:8000/rag/add-documents" \
 
 - `OPENAI_API_KEY`: API ключ OpenAI
 - `DEFAULT_LLM_MODEL`: Модель LLM по умолчанию
-- `VISION_MODEL`: Модель для vision задач
-- `EMBEDDING_MODEL`: Модель для embeddings
 - `ENABLE_WEB_SEARCH`: Включить web search
 - `ENABLE_PYTHON_EXEC`: Включить Python execution
 - `MAX_TOOL_CALLS`: Максимальное количество вызовов инструментов
@@ -220,12 +159,6 @@ curl -X POST "http://localhost:8000/rag/add-documents" \
 
 1. Создайте класс инструмента в `tools/`
 2. Добавьте его в `ToolAgent` в `agents/tool_agent.py`
-
-### Настройка RAG
-
-1. Инициализируйте векторную базу данных
-2. Добавьте документы через API или напрямую
-3. Настройте параметры retrieval в `RetrievalAgent`
 
 ## Лицензия
 

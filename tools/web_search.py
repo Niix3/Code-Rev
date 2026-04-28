@@ -1,7 +1,7 @@
 """Web search tool for agents."""
 from typing import List, Dict, Optional
 import requests
-from langchain.tools import Tool
+from langchain_core.tools import Tool
 from config import settings
 
 

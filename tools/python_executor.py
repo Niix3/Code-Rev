@@ -4,7 +4,7 @@ import subprocess
 import sys
 import io
 import contextlib
-from langchain.tools import Tool
+from langchain_core.tools import Tool
 from config import settings
 
 

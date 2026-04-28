@@ -5,36 +5,30 @@ from langgraph.graph import StateGraph, END
 from agents import (
     RouterAgent,
     TextReasoningAgent,
-    VisionAgent,
-    RetrievalAgent,
     ToolAgent,
     CriticAgent
 )
-from rag import VectorStore
 
 
 class AgentState(TypedDict):
     """State shared across all agents."""
     query: str
-    image: Annotated[list, operator.add]  # For image data
-    has_image: bool
     routed_agent: str
     agent_response: dict
     all_responses: Annotated[list, operator.add]
     final_response: str
     verified: bool
+    critic_verification: dict
     iteration: int
 
 
 class LangGraphOrchestrator:
     """Main orchestrator using LangGraph."""
     
-    def __init__(self, vector_store: VectorStore = None):
+    def __init__(self):
         """Initialize orchestrator with all agents."""
         self.router = RouterAgent()
         self.text_agent = TextReasoningAgent()
-        self.vision_agent = VisionAgent()
-        self.retrieval_agent = RetrievalAgent(vector_store)
         self.tool_agent = ToolAgent()
         self.critic = CriticAgent()
         
@@ -49,8 +43,6 @@ class LangGraphOrchestrator:
         # Add nodes
         workflow.add_node("router", self._router_node)
         workflow.add_node("text_reasoning", self._text_reasoning_node)
-        workflow.add_node("vision", self._vision_node)
-        workflow.add_node("retrieval", self._retrieval_node)
         workflow.add_node("tool", self._tool_node)
         workflow.add_node("critic", self._critic_node)
         workflow.add_node("aggregate", self._aggregate_node)
@@ -64,16 +56,12 @@ class LangGraphOrchestrator:
             self._route_decision,
             {
                 "text_reasoning": "text_reasoning",
-                "vision": "vision",
-                "retrieval": "retrieval",
                 "tool": "tool"
             }
         )
         
         # All agents go to critic
         workflow.add_edge("text_reasoning", "critic")
-        workflow.add_edge("vision", "critic")
-        workflow.add_edge("retrieval", "critic")
         workflow.add_edge("tool", "critic")
         
         # Critic goes to aggregate
@@ -87,8 +75,7 @@ class LangGraphOrchestrator:
     def _router_node(self, state: AgentState) -> AgentState:
         """Router node - determines which agent to use."""
         routing = self.router.route(
-            state["query"],
-            has_image=state.get("has_image", False)
+            state["query"]
         )
         return {
             "routed_agent": routing["agent"]
@@ -98,27 +85,6 @@ class LangGraphOrchestrator:
         """Text reasoning agent node."""
         context = state.get("agent_response", {}).get("response", "")
         response = self.text_agent.reason(state["query"], context)
-        return {
-            "agent_response": response,
-            "all_responses": [response]
-        }
-    
-    def _vision_node(self, state: AgentState) -> AgentState:
-        """Vision agent node."""
-        image = state.get("image", [None])[0] if state.get("image") else None
-        if not image:
-            # Fallback to text reasoning if no image
-            response = self.text_agent.reason(state["query"])
-        else:
-            response = self.vision_agent.analyze(state["query"], image)
-        return {
-            "agent_response": response,
-            "all_responses": [response]
-        }
-    
-    def _retrieval_node(self, state: AgentState) -> AgentState:
-        """Retrieval agent node."""
-        response = self.retrieval_agent.retrieve(state["query"])
         return {
             "agent_response": response,
             "all_responses": [response]
@@ -143,6 +109,7 @@ class LangGraphOrchestrator:
         )
         return {
             "verified": verification["verified"],
+            "critic_verification": verification,
             "agent_response": {**agent_response, "verification": verification}
         }
     
@@ -153,6 +120,9 @@ class LangGraphOrchestrator:
             all_responses = [state.get("agent_response", {})]
         
         aggregated = self.critic.aggregate_responses(all_responses, state["query"])
+        verification = state.get("critic_verification", {})
+        if verification and "verification" not in aggregated:
+            aggregated = {**aggregated, "verification": verification}
         return {
             "final_response": aggregated.get("response", ""),
             "agent_response": aggregated
@@ -162,26 +132,24 @@ class LangGraphOrchestrator:
         """Decision function for routing."""
         return state.get("routed_agent", "text_reasoning")
     
-    def invoke(self, query: str, image=None) -> dict:
+    def invoke(self, query: str) -> dict:
         """
         Process a request through the orchestrator.
         
         Args:
             query: User query
-            image: Optional image (PIL Image, bytes, or file path)
             
         Returns:
             Final response dict
         """
         initial_state = {
             "query": query,
-            "image": [image] if image else [],
-            "has_image": image is not None,
             "routed_agent": "",
             "agent_response": {},
             "all_responses": [],
             "final_response": "",
             "verified": False,
+            "critic_verification": {},
             "iteration": 0
         }
         

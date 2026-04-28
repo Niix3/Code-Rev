@@ -1,7 +1,6 @@
 """Critic/Verifier agent for quality assurance."""
 from typing import Dict, Any, List, Optional
-from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
+from openai import OpenAI
 from config import settings
 
 
@@ -10,10 +9,9 @@ class CriticAgent:
     
     def __init__(self):
         """Initialize critic agent."""
-        self.llm = ChatOpenAI(
-            model=settings.default_llm_model,
-            temperature=0.1,  # Lower temperature for critical analysis
-            api_key=settings.openai_api_key
+        self.client = OpenAI(
+            api_key=settings.openai_api_key,
+            base_url=settings.openai_base_url,
         )
     
     def verify(self, query: str, response: str, agent_name: str, 
@@ -30,34 +28,31 @@ class CriticAgent:
         Returns:
             Dict with 'verified', 'score', 'critique', 'suggestions'
         """
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a quality assurance agent. Evaluate the response for:
-            1. Relevance to the query
-            2. Accuracy and correctness
-            3. Completeness
-            4. Clarity and coherence
-            
-            Provide a score from 0-10 and detailed feedback."""),
-            ("user", """Original Query: {query}
+        system_prompt = """You are a quality assurance agent. Evaluate the response for:
+1. Relevance to the query
+2. Accuracy and correctness
+3. Completeness
+4. Clarity and coherence
+
+Provide a score from 0-10 and detailed feedback."""
+        user_prompt = f"""Original Query: {query}
             
 Agent: {agent_name}
 Response: {response}
 
-Context: {context}
+Context: {str(context) if context else "No additional context"}
 
-Evaluate this response:""")
-        ])
-        
-        chain = prompt | self.llm
-        critique_response = chain.invoke({
-            "query": query,
-            "agent_name": agent_name,
-            "response": response,
-            "context": str(context) if context else "No additional context"
-        })
-        
-        # Parse critique (simplified - in production use structured output)
-        critique_text = critique_response.content
+Evaluate this response:"""
+
+        critique_response = self.client.chat.completions.create(
+            model=settings.default_llm_model,
+            temperature=0.1,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        critique_text = critique_response.choices[0].message.content or ""
         
         # Extract score (simple heuristic)
         score = 7.0  # Default
@@ -105,18 +100,18 @@ Evaluate this response:""")
             for r in responses
         ])
         
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are synthesizing multiple agent responses into a coherent final answer.
-            Combine the best information from each response, resolve conflicts, and provide
-            a unified, comprehensive answer."""),
-            ("user", "Query: {query}\n\nAgent Responses:\n{responses}\n\nSynthesized Answer:")
-        ])
-        
-        chain = prompt | self.llm
-        final_response = chain.invoke({
-            "query": query,
-            "responses": combined
-        })
+        system_prompt = """You are synthesizing multiple agent responses into a coherent final answer.
+Combine the best information from each response, resolve conflicts, and provide
+a unified, comprehensive answer."""
+        user_prompt = f"Query: {query}\n\nAgent Responses:\n{combined}\n\nSynthesized Answer:"
+        final_response = self.client.chat.completions.create(
+            model=settings.default_llm_model,
+            temperature=0.1,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
         
         # Collect all sources
         all_sources = []
@@ -125,7 +120,7 @@ Evaluate this response:""")
                 all_sources.extend(r["sources"])
         
         return {
-            "response": final_response.content,
+            "response": final_response.choices[0].message.content or "",
             "sources": list(set(all_sources)),  # Remove duplicates
             "agent_responses": responses
         }
