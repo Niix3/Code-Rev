@@ -58,13 +58,14 @@ python example_usage.py
 ## Архитектура потока выполнения
 
 1. **User** отправляет запрос через API Gateway
-2. **Router Agent** направляет запрос в pipeline
-3. **Architect Agent** формирует план реализации
-4. **Coding Agent (OpenHands)** выполняет coding-этап в общей директории
-5. **Tester Agent** запускает тесты в той же общей директории
-6. **Critic Agent** проверяет качество ответа
-7. **Aggregation** объединяет результаты
-8. **User** получает финальный ответ
+2. **Architect Agent** формирует JSON-план
+3. **Coding Agent** реализует код
+4. **Tester Agent** пишет тесты (write_tests)
+5. **Tester Agent** запускает тесты (run_tests)
+6. **Review pipeline** (correctness → security → code style → composer)
+7. При **refine** — повтор **coding → write_tests → run_tests → review**
+8. **Aggregation** объединяет результаты
+9. **User** получает финальный ответ
 
 ## Настройка компонентов
 

@@ -5,12 +5,16 @@ from typing import Any, Dict, Optional
 
 from config import settings
 
+from .openhands_edits import extract_edited_files
+
+_SDK_IMPORT_ERROR: str | None = None
 try:
     from openhands.sdk import LLM, Agent, Conversation, Tool
     from openhands.tools.file_editor import FileEditorTool
     from openhands.tools.task_tracker import TaskTrackerTool
     from openhands.tools.terminal import TerminalTool
-except Exception:  # pragma: no cover - handled at runtime
+except Exception as exc:  # pragma: no cover - handled at runtime
+    _SDK_IMPORT_ERROR = str(exc)
     LLM = Agent = Conversation = Tool = None  # type: ignore[assignment]
     FileEditorTool = TaskTrackerTool = TerminalTool = None  # type: ignore[assignment]
 
@@ -35,11 +39,16 @@ class OpenHandsSDKRunner:
     def run(self, prompt: str, workspace_path: str, timeout_seconds: int) -> Dict[str, Any]:
         """Execute prompt with OpenHands SDK and return normalized response."""
         if not self._sdk_available():
+            detail = _SDK_IMPORT_ERROR or "import failed"
             return {
                 "ok": False,
                 "status": "error",
                 "run_id": None,
-                "message": "OpenHands SDK packages are not available in runtime environment.",
+                "message": (
+                    "OpenHands SDK is not usable in this environment. "
+                    f"Import error: {detail}. "
+                    "Install matching versions, e.g. openhands-sdk==1.20.0 and openhands-tools==1.20.0."
+                ),
                 "raw_result": {},
                 "error": "missing_openhands_sdk",
             }
@@ -63,12 +72,14 @@ class OpenHandsSDKRunner:
             conversation.send_message(prompt)
             run_result = conversation.run()
             run_id = getattr(conversation, "id", None) or getattr(run_result, "id", None)
+            edited_files = extract_edited_files(conversation)
             return {
                 "ok": True,
                 "status": "finished",
                 "run_id": run_id,
                 "message": self._extract_response_text(run_result),
                 "raw_result": run_result if isinstance(run_result, dict) else {"result": str(run_result)},
+                "edited_files": edited_files,
             }
         except Exception as exc:
             return {

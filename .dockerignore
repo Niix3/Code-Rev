@@ -1,0 +1,8 @@
+.venv/
+benchmarking/.venv/
+benchmarking/workspaces/
+benchmarking/results/
+**/__pycache__/
+*.pyc
+.git/
+workspaces/

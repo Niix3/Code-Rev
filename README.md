@@ -1,6 +1,6 @@
 # Multi-Agent System with LangGraph
 
-Система мультиагентов на базе LangGraph с pipeline `architect -> coding(OpenHands) -> tester`.
+Система мультиагентов на базе LangGraph с pipeline: `architect -> coding -> write_tests -> run_tests -> review -> composer`.
 
 ## Архитектура
 
@@ -10,11 +10,11 @@ User
 API Gateway (FastAPI)
  ↓
 LangGraph Orchestrator
- ├── Router Agent
  ├── Architect Agent
  ├── Coding Agent (OpenHands)
- ├── Tester Agent
- └── Critic / Verifier Agent
+ ├── Tester Agent (write_tests → run_tests)
+ ├── Correctness / Security / Code Style Reviewers
+ └── Composer Review Agent (pass | refine)
  ↓
 Response Aggregation
  ↓
@@ -29,30 +29,28 @@ User
 
 ### 2. LangGraph Orchestrator
 - Управление потоком выполнения между агентами
-- Маршрутизация запросов
 - Агрегация ответов
 
 ### 3. Агенты
 
-#### Router Agent
-- Анализирует запрос и определяет подходящего агента
-
 #### Architect Agent
-- Формирует архитектурный план реализации
-- Определяет ограничения и шаги для coding stage
+- Формирует JSON-план с `explanation` и `steps` (agent, description, file, …)
 
 #### Coding Agent (OpenHands)
-- Выполняет кодинг-задачу через OpenHands Python SDK (in-process)
-- Работает в общей директории через Docker volume
+- Реализует код по архитектурному плану
 
 #### Tester Agent
-- Запускает тестовый сценарий через OpenHands Python SDK (по умолчанию `pytest -q`)
-- Проверяет изменения в той же общей директории
+- **write_tests** — пишет pytest-тесты после coding
+- **run_tests** — запускает `pytest -q`
 
-#### Critic/Verifier Agent
-- Проверка качества ответов
-- Оценка релевантности и точности
-- Агрегация множественных ответов
+#### Review pipeline
+- **Correctness Reviewer** — соответствие запросу, качеству тестов и результатам прогона
+- **Security Reviewer** — проверка безопасности кода
+- **Code Style Reviewer** — соответствие стандартам оформления
+- **Composer Review Agent** — собирает вердикт `pass` или `refine` (Pydantic); при `refine` coding agent получает структурированную критику
+
+#### Response Aggregator
+- Финальная агрегация ответов этапов pipeline
 
 ### 4. Tools
 
@@ -121,12 +119,16 @@ curl -X POST "http://localhost:8000/query" \
 │   └── graph.py
 ├── agents/                 # Все агенты
 │   ├── __init__.py
-│   ├── router_agent.py
 │   ├── architect_agent.py
 │   ├── coding_agent.py
 │   ├── tester_agent.py
+│   ├── correctness_reviewer.py
+│   ├── security_reviewer.py
+│   ├── code_style_reviewer.py
+│   ├── composer_review_agent.py
+│   ├── review_models.py
+│   ├── response_aggregator.py
 │   ├── tool_agent.py
-│   └── critic_agent.py
 ├── tools/                 # Внешние инструменты
 │   ├── __init__.py
 │   ├── web_search.py

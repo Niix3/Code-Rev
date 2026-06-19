@@ -14,6 +14,8 @@ services:
       - "8000:8000"
     volumes:
       - workspace_data:/workspace
+      # SWE-bench instance workspaces (host: benchmarking/workspaces → container: /workspaces)
+      - ./benchmarking/workspaces:/workspaces
 
 volumes:
   workspace_data:
